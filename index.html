@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14151c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mi Backlog</title>
+<style>
+:root{
+  --bg:#14151c; --panel:#1c1e28; --panel2:#252837; --line:#2f3346; --text:#e8e9f0; --mute:#8d92a8;
+  --accent:#7c6cff; --good:#3ecf8e; --warn:#f5a524; --bad:#ef5b6b; --r:14px;
+  --playing:#7c6cff; --backlog:#4aa8ff; --hold:#f5a524; --dropped:#ef5b6b; --done:#3ecf8e;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:var(--panel2);border-radius:10px;padding:8px 12px}
+button:hover{filter:brightness(1.15)}
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+label{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px}
+a{color:var(--accent)}
+
+#app{display:flex;flex-direction:column;height:100%}
+header{display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 12px 8px;background:var(--bg);position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .ib{width:40px;height:40px;padding:0;display:grid;place-items:center;border-radius:12px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 10px}
+.toolbar input{flex:1 1 100%;min-width:0}
+.toolbar select{flex:1 1 40%;min-width:0}
+main{flex:1;overflow-y:auto;padding:4px 12px calc(90px + env(safe-area-inset-bottom))}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+.empty{color:var(--mute);text-align:center;padding:60px 20px}
+.empty b{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
+
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;background:none;border-radius:0;padding:9px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mute);position:relative}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--c)}
+nav button .n{position:absolute;top:4px;left:calc(50% + 8px);background:var(--panel2);color:var(--text);border-radius:9px;padding:0 5px;font-size:10px;min-width:16px;text-align:center}
+nav button.on .n{background:var(--c);color:#fff}
+
+.fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;font-size:30px;line-height:1;display:grid;place-items:center;padding:0;box-shadow:0 6px 20px #0008;z-index:7}
+
+.card{background:var(--panel);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--line)}
+.cover{position:relative;aspect-ratio:2/3;background:var(--panel2);cursor:pointer}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.ph{width:100%;height:100%;display:grid;place-items:center;font-size:34px;font-weight:700;color:#fff9;padding:10px;text-align:center}
+.chip{position:absolute;left:6px;bottom:6px;background:#000a;backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:11px;max-width:calc(100% - 12px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{position:absolute;right:6px;top:6px;border-radius:8px;padding:2px 8px;font-size:11px;color:#fff;background:var(--c)}
+.meta{padding:9px 10px 10px;display:flex;flex-direction:column;gap:7px}
+.meta h3{margin:0;font-size:13.5px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em;cursor:pointer}
+.bar{position:relative;height:10px;border-radius:6px;background:var(--panel2);touch-action:pan-y;cursor:ew-resize}
+.bar::before{content:"";position:absolute;inset:-9px 0}
+.bar i{display:block;height:100%;border-radius:6px;background:var(--c);pointer-events:none}
+.row{display:flex;align-items:center;gap:6px}
+.pct{font-size:12px;color:var(--mute);min-width:34px}
+.row .go{flex:1;font-size:12.5px;padding:7px 6px;background:var(--c);color:#fff;border-radius:9px}
+.row .more{padding:7px 10px}
+
+.wrap[hidden]{display:none}
+.wrap{position:fixed;inset:0;background:#000b;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:560px;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 4px;font-size:17px}
+.sheet .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 30%;font-size:13px;padding:9px 6px;border:1px solid var(--line)}
+.seg button.on{background:var(--c);border-color:var(--c);color:#fff}
+.hint{font-size:12px;color:var(--mute);margin:6px 0}
+.btnrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btnrow button{flex:1}
+.pri{background:var(--accent);color:#fff}
+.danger{color:var(--bad)}
+.detail-head{display:flex;gap:12px}
+.detail-head .th{width:84px;aspect-ratio:2/3;border-radius:10px;overflow:hidden;flex:none;background:var(--panel2)}
+.detail-head .th img{width:100%;height:100%;object-fit:cover}
+.detail-head .f{flex:1;min-width:0}
+.prog{display:flex;gap:10px;align-items:center}
+.prog input[type=range]{padding:0;border:0;background:none;accent-color:var(--accent);height:30px}
+.prog input[type=number]{width:74px}
+.res{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--panel2);margin-bottom:8px;cursor:pointer}
+.res:hover{filter:brightness(1.12)}
+.res .th{width:42px;aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:var(--bg);flex:none}
+.res .th img{width:100%;height:100%;object-fit:cover}
+.res .t{flex:1;min-width:0}
+.res .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res .t small{color:var(--mute)}
+.res.added{opacity:.55}
+.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.covers img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;cursor:pointer;background:var(--panel2);border:2px solid transparent}
+.covers img:hover{border-color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000d;color:#fff;padding:10px 16px;border-radius:12px;z-index:30;max-width:90%;font-size:14px;text-align:center}
+.status-line{font-size:13px;margin:8px 0;padding:8px 10px;border-radius:10px;background:var(--panel2)}
+.ok{color:var(--good)} .ko{color:var(--bad)}
+
+@media(min-width:900px){
+  #app{flex-direction:row;flex-wrap:wrap;align-content:flex-start}
+  nav{position:fixed;top:0;bottom:0;left:0;right:auto;width:220px;flex-direction:column;border-top:0;border-right:1px solid var(--line);padding:16px 10px;gap:4px}
+  nav button{flex:none;flex-direction:row;gap:12px;font-size:15px;padding:12px 14px;border-radius:12px;justify-content:flex-start}
+  nav button.on{background:var(--panel2)}
+  nav button .n{position:static;margin-left:auto}
+  header,.toolbar,main{margin-left:220px;width:calc(100% - 220px)}
+  header{flex:none}.toolbar{flex:none;max-width:760px;flex-wrap:nowrap}
+  .toolbar input{flex:2}.toolbar select{flex:1}
+  main{padding-bottom:40px;height:calc(100% - 110px);flex:none}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+  .fab{bottom:24px;right:28px}
+  .toast{bottom:24px;left:calc(50% + 110px)}
+  .wrap{align-items:center}
+  .sheet{border-radius:20px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="title">Mi Backlog</h1>
+    <button class="ib" id="btnSettings" aria-label="Ajustes" title="Ajustes">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Buscar en mis juegos…" autocomplete="off">
+    <select id="fPlat" aria-label="Plataforma"></select>
+    <select id="fSort" aria-label="Orden">
+      <option value="updated">Recientes</option>
+      <option value="title">A–Z</option>
+      <option value="progress">Progreso</option>
+      <option value="added">Añadidos</option>
+    </select>
+  </div>
+  <main id="main"><div class="grid" id="grid"></div><div id="empty"></div></main>
+  <nav id="nav"></nav>
+  <button class="fab" id="fab" aria-label="Añadir juego" title="Añadir juego">+</button>
+</div>
+<div class="wrap" id="wrap" hidden><div class="sheet" id="sheet"></div></div>
+
+<script>
+'use strict';
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const IC = {
+  playing: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  backlog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  hold:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
+  dropped: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  done:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+};
+const STATUSES = [
+  {id:'playing', label:'Jugando',     c:'var(--playing)'},
+  {id:'backlog', label:'Backlog',     c:'var(--backlog)'},
+  {id:'hold',    label:'En espera',   c:'var(--hold)'},
+  {id:'dropped', label:'Abandonados', c:'var(--dropped)'},
+  {id:'done',    label:'Completados', c:'var(--done)'}
+];
+const ST = Object.fromEntries(STATUSES.map(s => [s.id, s]));
+const PLATFORMS = ['PC','Steam Deck','PlayStation 5','PlayStation 4','PlayStation 3','PS Vita','PSP','Xbox Series X|S','Xbox One','Xbox 360','Nintendo Switch','Nintendo Switch 2','Wii U','Wii','3DS','Android','Otra'];
+
+/* ---------- estado persistente (solo local) ---------- */
+const KEY = 'backlog.data.v1', SKEY = 'backlog.settings.v1';
+function load(k, d){ try { const v = JSON.parse(localStorage.getItem(k)); return v && typeof v === 'object' ? v : d; } catch(_) { return d; } }
+function store(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(_) { return false; } }
+let D = load(KEY, {games:{}});
+let S = Object.assign({sgdbKey:'', proxy:'', lastPlatform:'PC'}, load(SKEY, {}));
+if (!D.games) D.games = {};
+const save = () => { if (!store(KEY, D)) toast('No se pudo guardar: almacenamiento lleno o bloqueado'); };
+const saveS = () => store(SKEY, S);
+const UI = {tab:'playing', q:'', plat:'', sort:'updated'};
+const list = () => Object.values(D.games);
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(n => n.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2600);
+}
+
+/* ---------- operaciones de datos ---------- */
+function addGame(o){
+  const now = Date.now();
+  const g = {id: uid(), title: o.title.trim(), platform: o.platform || '', status: o.status || 'backlog',
+    progress: o.status === 'done' ? 100 : 0, cover: o.cover || '', sgdbId: o.sgdbId || null, notes: '', added: now, updated: now};
+  D.games[g.id] = g; save(); render(); return g;
+}
+function touch(g){ g.updated = Date.now(); save(); render(); }
+function setStatus(g, s, quiet){
+  g.status = s;
+  if (s === 'done') g.progress = 100;
+  else if (s === 'playing' && g.progress >= 100) g.progress = 0;
+  touch(g);
+  if (!quiet) toast(`«${g.title}» → ${ST[s].label}`);
+}
+function setProgress(g, v){
+  g.progress = clamp(Math.round(v), 0, 100);
+  if (g.progress >= 100 && g.status !== 'done'){ g.status = 'done'; toast(`«${g.title}» completado`); }
+  touch(g);
+}
+function removeGame(g){ delete D.games[g.id]; save(); render(); }
+
+/* ---------- API de SteamGridDB ---------- */
+const SGDB = 'https://www.steamgriddb.com/api/v2';
+async function sgdb(path){
+  if (!S.sgdbKey) throw new Error('Falta la clave API de SteamGridDB (Ajustes).');
+  const url = SGDB + path;
+  const target = S.proxy ? S.proxy + encodeURIComponent(url) : url;
+  let r;
+  try { r = await fetch(target, {headers:{Authorization:'Bearer ' + S.sgdbKey}}); }
+  catch(e){ throw new Error('No se pudo conectar (¿bloqueo CORS o sin red?). Prueba a configurar el proxy en Ajustes.'); }
+  if (r.status === 401 || r.status === 403) throw new Error('SteamGridDB rechazó la clave (HTTP ' + r.status + ').');
+  if (!r.ok) throw new Error('SteamGridDB respondió HTTP ' + r.status);
+  const j = await r.json();
+  if (j.success === false) throw new Error((j.errors && j.errors[0]) || 'Error de SteamGridDB');
+  return j.data;
+}
+const coverCache = new Map();
+async function grids(id, all){
+  const q = all ? '' : '?dimensions=600x900,342x482,660x930&types=static';
+  try { return await sgdb(`/grids/game/${id}${q}`) || []; } catch(e){ if (all) throw e; return []; }
+}
+async function firstCover(id){
+  if (coverCache.has(id)) return coverCache.get(id);
+  const p = grids(id).then(a => a.length ? (a[0].thumb || a[0].url) : '').catch(() => '');
+  coverCache.set(id, p); return p;
+}
+
+/* ---------- render principal ---------- */
+function hue(s){ let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function coverHTML(g){
+  if (g.cover) return `<img src="${esc(g.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
+  return ph(g);
+}
+function ph(g){
+  const ini = g.title.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+  const h = hue(g.title);
+  return `<div class="ph" style="background:linear-gradient(145deg,hsl(${h} 45% 32%),hsl(${(h + 50) % 360} 50% 20%))">${esc(ini)}</div>`;
+}
+function cardHTML(g, showSt){
+  const st = ST[g.status];
+  const act = g.status === 'playing' ? ['done','Completar'] : g.status === 'done' ? ['playing','Rejugar'] : ['playing','Jugar'];
+  return `<article class="card" data-id="${g.id}" style="--c:${st.c}">
+    <div class="cover" data-act="open">${coverHTML(g)}${showSt ? `<span class="badge">${st.label}</span>` : ''}${g.platform ? `<span class="chip">${esc(g.platform)}</span>` : ''}</div>
+    <div class="meta">
+      <h3 data-act="open">${esc(g.title)}</h3>
+      <div class="bar" role="slider" aria-label="Progreso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${g.progress}"><i style="width:${g.progress}%"></i></div>
+      <div class="row"><span class="pct">${g.progress}%</span>
+        <button class="go" data-act="move" data-to="${act[0]}">${act[1]}</button>
+        <button class="more" data-act="open" aria-label="Detalles">⋯</button></div>
+    </div></article>`;
+}
+function render(){
+  const q = UI.q.trim().toLowerCase();
+  // navegación
+  const counts = {}; list().forEach(g => counts[g.status] = (counts[g.status] || 0) + 1);
+  $('#nav').innerHTML = STATUSES.map(s =>
+    `<button data-tab="${s.id}" class="${!q && UI.tab === s.id ? 'on' : ''}" style="--c:${s.c}">${IC[s.id]}<span>${s.label}</span><span class="n">${counts[s.id] || 0}</span></button>`).join('');
+  $('#title').textContent = q ? 'Resultados' : ST[UI.tab].label;
+  // filtro de plataforma (según los juegos existentes)
+  const plats = [...new Set(list().map(g => g.platform).filter(Boolean))].sort();
+  if (UI.plat && !plats.includes(UI.plat)) UI.plat = '';
+  $('#fPlat').innerHTML = '<option value="">Todas las plataformas</option>' + plats.map(p => `<option ${p === UI.plat ? 'selected' : ''}>${esc(p)}</option>`).join('');
+  // lista
+  let items = list().filter(g => (q ? g.title.toLowerCase().includes(q) : g.status === UI.tab) && (!UI.plat || g.platform === UI.plat));
+  const cmp = {
+    updated: (a, b) => b.updated - a.updated,
+    added: (a, b) => b.added - a.added,
+    title: (a, b) => a.title.localeCompare(b.title, 'es', {sensitivity:'base'}),
+    progress: (a, b) => b.progress - a.progress
+  }[UI.sort];
+  items.sort(cmp);
+  $('#grid').innerHTML = items.map(g => cardHTML(g, !!q)).join('');
+  $('#empty').innerHTML = items.length ? '' : (q
+    ? `<div class="empty"><b>Sin resultados</b>No hay juegos tuyos con ese nombre.</div>`
+    : `<div class="empty"><b>Aquí no hay nada todavía</b>Pulsa + para añadir un juego a «${ST[UI.tab].label}».</div>`);
+}
+
+/* ---------- eventos del listado ---------- */
+$('#nav').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  UI.tab = b.dataset.tab; UI.q = ''; $('#q').value = ''; render(); $('#main').scrollTop = 0;
+});
+$('#q').addEventListener('input', e => { UI.q = e.target.value; render(); });
+$('#fPlat').addEventListener('change', e => { UI.plat = e.target.value; render(); });
+$('#fSort').addEventListener('change', e => { UI.sort = e.target.value; render(); });
+$('#fab').addEventListener('click', openAdd);
+$('#btnSettings').addEventListener('click', openSettings);
+
+$('#grid').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const card = a.closest('.card'); const g = D.games[card.dataset.id]; if (!g) return;
+  if (a.dataset.act === 'open') openDetail(g);
+  else if (a.dataset.act === 'move') setStatus(g, a.dataset.to);
+});
+$('#grid').addEventListener('error', e => {   // portada rota → marcador de posición
+  if (e.target.tagName !== 'IMG') return;
+  const card = e.target.closest('.card'); const g = card && D.games[card.dataset.id];
+  if (g) e.target.parentElement.insertAdjacentHTML('afterbegin', ph(g)), e.target.remove();
+}, true);
+
+// barra de progreso arrastrable en la tarjeta
+(function(){
+  let drag = null;
+  const val = (bar, x) => { const r = bar.getBoundingClientRect(); return clamp(Math.round((x - r.left) / r.width * 100), 0, 100); };
+  const paint = (d, v) => { d.v = v; d.bar.firstElementChild.style.width = v + '%'; d.pct.textContent = v + '%'; };
+  $('#grid').addEventListener('pointerdown', e => {
+    const bar = e.target.closest('.bar'); if (!bar) return;
+    const card = bar.closest('.card');
+    drag = {bar, g: D.games[card.dataset.id], pct: card.querySelector('.pct'), v: 0};
+    bar.setPointerCapture(e.pointerId); paint(drag, val(bar, e.clientX));
+  });
+  $('#grid').addEventListener('pointermove', e => { if (drag) paint(drag, val(drag.bar, e.clientX)); });
+  $('#grid').addEventListener('pointerup', () => { if (!drag) return; const d = drag; drag = null; setProgress(d.g, d.v); });
+  $('#grid').addEventListener('pointercancel', () => { if (!drag) return; drag = null; render(); });
+})();
+
+/* ---------- hojas modales ---------- */
+function openSheet(html){ $('#sheet').innerHTML = html; $('#wrap').hidden = false; $('#sheet').scrollTop = 0; }
+function closeSheet(){ $('#wrap').hidden = true; $('#sheet').innerHTML = ''; }
+$('#wrap').addEventListener('mousedown', e => { if (e.target === $('#wrap')) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#wrap').hidden) closeSheet(); });
+
+const platOptions = () => `<datalist id="plats">${PLATFORMS.map(p => `<option value="${esc(p)}">`).join('')}</datalist>`;
+
+/* --- añadir juego --- */
+function openAdd(){
+  openSheet(`
+    <div class="top"><h2>Añadir juego</h2><button id="x">Cerrar</button></div>
+    <label>Buscar en SteamGridDB</label>
+    <input id="aq" type="search" placeholder="Nombre del juego…" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <div style="flex:1"><label>Plataforma</label><input id="ap" list="plats" value="${esc(S.lastPlatform)}">${platOptions()}</div>
+      <div style="flex:1"><label>Añadir a</label><select id="as">${STATUSES.map(s => `<option value="${s.id}" ${s.id === (UI.tab === 'done' ? 'backlog' : UI.tab) ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+    </div>
+    <div id="ares" style="margin-top:12px"></div>
+    <div class="btnrow"><button id="manual">Añadir «<span id="mt">…</span>» sin buscar</button></div>`);
+  $('#x').onclick = closeSheet;
+  const aq = $('#aq'); setTimeout(() => aq.focus(), 50);
+  const opts = () => { const p = $('#ap').value.trim(); S.lastPlatform = p || S.lastPlatform; saveS(); return {platform: p, status: $('#as').value}; };
+  $('#manual').onclick = () => {
+    const t = aq.value.trim(); if (!t) return toast('Escribe un título primero');
+    addGame({title: t, ...opts()}); toast(`«${t}» añadido`); closeSheet();
+  };
+  let timer, seq = 0;
+  aq.addEventListener('input', () => {
+    $('#mt').textContent = aq.value.trim() || '…';
+    clearTimeout(timer); timer = setTimeout(run, 400);
+  });
+  async function run(){
+    const term = aq.value.trim(), me = ++seq; const box = $('#ares');
+    if (!box || !aq.isConnected) return;               // la hoja ya se cerró
+    if (term.length < 2){ box.innerHTML = ''; return; }
+    if (!S.sgdbKey){ box.innerHTML = `<div class="status-line">Para buscar con portadas, añade tu clave de SteamGridDB en Ajustes. Mientras tanto puedes añadir el juego a mano.</div>`; return; }
+    box.innerHTML = '<div class="hint">Buscando…</div>';
+    try {
+      const data = (await sgdb('/search/autocomplete/' + encodeURIComponent(term))) || [];
+      if (me !== seq || !box.isConnected) return;
+      if (!data.length){ box.innerHTML = '<div class="hint">Sin resultados. Puedes añadirlo a mano abajo.</div>'; return; }
+      const rows = data.slice(0, 10);
+      box.innerHTML = rows.map((r, i) => `<div class="res" data-i="${i}"><div class="th"></div><div class="t"><b>${esc(r.name)}</b><small>${r.release_date ? new Date(r.release_date * 1000).getUTCFullYear() : ''}${r.verified ? ' · verificado' : ''}</small></div></div>`).join('');
+      rows.forEach((r, i) => firstCover(r.id).then(u => {
+        const el = box.querySelector(`.res[data-i="${i}"] .th`);
+        if (el && u) el.innerHTML = `<img src="${esc(u)}" alt="" referrerpolicy="no-referrer">`;
+      }));
+      box.onclick = async e => {
+        const row = e.target.closest('.res'); if (!row || row.classList.contains('added')) return;
+        const r = rows[+row.dataset.i];
+        const cover = await firstCover(r.id);
+        addGame({title: r.name, sgdbId: r.id, cover, ...opts()});
+        row.classList.add('added'); row.querySelector('small').textContent = '✓ añadido'; toast(`«${r.name}» añadido`);
+      };
+    } catch(e){ if (me === seq) box.innerHTML = `<div class="status-line ko">${esc(e.message)}</div>`; }
+  }
+}
+
+/* --- detalle / edición --- */
+function openDetail(g){
+  const draw = () => openSheet(`
+    <div class="top"><h2>Detalles</h2><button id="x">Cerrar</button></div>
+    <div class="detail-head">
+      <div class="th" id="dth">${coverHTML(g)}</div>
+      <div class="f"><label style="margin-top:0">Título</label><input id="dt" value="${esc(g.title)}">
+        <label>Plataforma</label><input id="dp" list="plats" value="${esc(g.platform)}" placeholder="Dónde lo juegas / lo jugarás">${platOptions()}</div>
+    </div>
+    <label>Lista</label>
+    <div class="seg" id="dst">${STATUSES.map(s => `<button data-s="${s.id}" class="${g.status === s.id ? 'on' : ''}" style="--c:${s.c}">${s.label}</button>`).join('')}</div>
+    <label>Progreso</label>
+    <div class="prog"><input id="dr" type="range" min="0" max="100" value="${g.progress}" style="flex:1"><input id="dn" type="number" min="0" max="100" value="${g.progress}"></div>
+    <label>Notas</label><textarea id="dno" rows="3" placeholder="Opcional">${esc(g.notes)}</textarea>
+    <div class="btnrow"><button id="dcov">Cambiar portada</button><button id="ddel" class="danger">Eliminar</button></div>`);
+  draw();
+  const bind = () => {
+    $('#x').onclick = closeSheet;
+    $('#dt').onchange = e => { const t = e.target.value.trim(); if (t){ g.title = t; touch(g); } else e.target.value = g.title; };
+    $('#dp').onchange = e => { g.platform = e.target.value.trim(); touch(g); };
+    $('#dno').onchange = e => { g.notes = e.target.value; touch(g); };
+    $('#dst').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; setStatus(g, b.dataset.s, true); draw(); bind(); };
+    const r = $('#dr'), n = $('#dn');
+    r.oninput = () => { n.value = r.value; };
+    r.onchange = () => { setProgress(g, +r.value); draw(); bind(); };
+    n.onchange = () => { setProgress(g, clamp(+n.value || 0, 0, 100)); draw(); bind(); };
+    $('#ddel').onclick = () => {
+      if ($('#ddel').dataset.sure){ removeGame(g); closeSheet(); toast('Juego eliminado'); }
+      else { $('#ddel').dataset.sure = 1; $('#ddel').textContent = 'Pulsa otra vez para confirmar'; }
+    };
+    $('#dcov').onclick = () => openCovers(g, () => { draw(); bind(); });
+  };
+  bind();
+}
+
+/* --- elegir portada --- */
+async function openCovers(g, back){
+  openSheet(`<div class="top"><h2>Portada de «${esc(g.title)}»</h2><button id="x">Atrás</button></div>
+    <div id="cv"><div class="hint">Buscando portadas…</div></div>
+    <label>O pega la URL de una imagen</label><input id="cu" placeholder="https://…">
+    <label>O sube una imagen</label><input id="cf" type="file" accept="image/*">
+    <div class="btnrow"><button id="cclear">Quitar portada</button></div>`);
+  $('#x').onclick = back;
+  const set = u => { g.cover = u; touch(g); back(); };
+  $('#cu').onchange = e => { const u = e.target.value.trim(); if (/^https?:\/\//i.test(u)) set(u); else if (u) toast('La URL debe empezar por http(s)://'); };
+  $('#cclear').onclick = () => set('');
+  $('#cf').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => {
+      const w = 360, h = Math.round(w * 1.5), c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); const s = Math.max(w / img.width, h / img.height);
+      x.drawImage(img, (w - img.width * s) / 2, (h - img.height * s) / 2, img.width * s, img.height * s);
+      URL.revokeObjectURL(url); set(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => toast('No se pudo leer esa imagen'); img.src = url;
+  };
+  const cv = $('#cv');
+  try {
+    if (!g.sgdbId){
+      const r = await sgdb('/search/autocomplete/' + encodeURIComponent(g.title));
+      if (r && r[0]){ g.sgdbId = r[0].id; save(); }
+    }
+    if (!g.sgdbId){ cv.innerHTML = '<div class="hint">No encontré este juego en SteamGridDB.</div>'; return; }
+    let arr = await grids(g.sgdbId);
+    if (!arr.length) arr = await grids(g.sgdbId, true);
+    if (!arr.length){ cv.innerHTML = '<div class="hint">SteamGridDB no tiene portadas para este juego.</div>'; return; }
+    cv.innerHTML = `<div class="covers">${arr.slice(0, 30).map((a, i) => `<img data-i="${i}" src="${esc(a.thumb || a.url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`).join('')}</div>`;
+    cv.onclick = e => { const im = e.target.closest('img'); if (im) { const a = arr[+im.dataset.i]; set(a.thumb || a.url); } };
+  } catch(e){ cv.innerHTML = `<div class="status-line ko">${esc(e.message)}</div>`; }
+}
+
+/* --- ajustes --- */
+function openSettings(){
+  openSheet(`
+    <div class="top"><h2>Ajustes</h2><button id="x">Cerrar</button></div>
+    <label>Clave API de SteamGridDB</label>
+    <input id="sk" type="password" value="${esc(S.sgdbKey)}" placeholder="Pega aquí tu clave" autocomplete="off">
+    <div class="hint">Consíguela en <a href="https://www.steamgriddb.com/profile/preferences/api" target="_blank" rel="noopener">steamgriddb.com → Preferences → API</a>. Se guarda solo en este dispositivo.</div>
+    <label>Proxy CORS (opcional)</label>
+    <input id="sp" value="${esc(S.proxy)}" placeholder="https://tu-worker.workers.dev/?url=">
+    <div class="hint">Solo si «Probar conexión» falla por CORS. Ver README.</div>
+    <div class="btnrow"><button id="test">Probar conexión</button></div>
+    <div id="tres"></div>
+    <label style="margin-top:18px">Datos (${list().length} juegos)</label>
+    <div class="btnrow" style="margin-top:0"><button id="exp">Exportar copia</button><button id="imp">Importar copia</button></div>
+    <input id="impf" type="file" accept=".json,application/json" hidden>
+    <div class="hint">Tus datos viven solo en este navegador. Haz copias de vez en cuando; al borrar los datos del navegador se pierden.</div>`);
+  $('#x').onclick = closeSheet;
+  const commit = () => { S.sgdbKey = $('#sk').value.trim(); S.proxy = $('#sp').value.trim(); saveS(); };
+  $('#sk').onchange = commit; $('#sp').onchange = commit;
+  $('#test').onclick = async () => {
+    commit(); const out = $('#tres'); out.innerHTML = '<div class="status-line">Probando…</div>';
+    try { const r = await sgdb('/search/autocomplete/zelda'); out.innerHTML = `<div class="status-line ok">Conexión correcta (${(r || []).length} resultados de prueba).</div>`; }
+    catch(e){ out.innerHTML = `<div class="status-line ko">${esc(e.message)}</div>`; }
+  };
+  $('#exp').onclick = () => {
+    const blob = new Blob([JSON.stringify({app:'backlog', version:1, games:D.games}, null, 1)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'backlog-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $('#imp').onclick = () => $('#impf').click();
+  $('#impf').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      if (!j || typeof j.games !== 'object') throw 0;
+      let n = 0;
+      for (const [id, g] of Object.entries(j.games)){
+        if (!g || typeof g.title !== 'string' || !ST[g.status]) continue;
+        const cur = D.games[id];
+        if (!cur || (g.updated || 0) > (cur.updated || 0)){ D.games[id] = {id, title:g.title, platform:g.platform || '', status:g.status, progress:clamp(+g.progress || 0, 0, 100), cover:g.cover || '', sgdbId:g.sgdbId || null, notes:g.notes || '', added:g.added || Date.now(), updated:g.updated || Date.now()}; n++; }
+      }
+      save(); render(); toast(`${n} juegos importados`); closeSheet();
+    } catch(_){ toast('Ese archivo no parece una copia válida'); }
+  };
+}
+
+/* ---------- arranque ---------- */
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
