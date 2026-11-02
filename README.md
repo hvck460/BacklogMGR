@@ -1,17 +1,28 @@
-# Mi Backlog
+# BacklogMGR
 
 Gestor personal de backlog de videojuegos. Web instalable (PWA): funciona en el móvil Android y en el PC, y sin conexión una vez cargada.
 
-## Qué hace (versión 1)
+## Qué hace
 
-- Cinco listas: Jugando, Backlog, En espera, Abandonados y Completados.
-- Tarjetas con portada, plataforma y barra de progreso. La barra se arrastra directamente en la tarjeta.
+- Seis listas: Jugando, Backlog, Deseados, En espera, Abandonados y Completados.
+- Tarjetas con portada, plataforma y barra de progreso que se arrastra directamente en la tarjeta.
 - «Jugar» / «Completar» / «Rejugar» con un toque. Al llegar al 100 % pasa solo a Completados.
-- Búsqueda de juegos y portadas con SteamGridDB (tu clave personal) y selector de portadas alternativas. También puedes pegar una URL o subir una imagen.
+- **Fechas automáticas:** se apunta cuándo empiezas (al pasar a Jugando) y cuándo terminas (al completar). Se pueden editar a mano.
+- **Valoración** de 1 a 5 estrellas y un campo de texto cuyo título cambia según la lista: «Opinión final» en Completados, «Motivo del abandono» en Abandonados, «Motivo de la pausa» en En espera.
+- **Veces completado**: sube solo cada vez que completas el juego; también se puede corregir.
+- **Etiquetas propias** (Co-op, Para el Deck, Cortos…) con filtro en la barra superior. Un juego puede tener varias.
+- **Duración estimada** (en horas) por juego, con un enlace para consultarla en HowLongToBeat. Se muestra en la tarjeta y suma en las estadísticas.
+- **¿A qué juego ahora?** (icono del dado): elige al azar un juego de tu backlog, respetando el filtro de plataforma y etiqueta activo.
+- **Estadísticas** (icono de barras): completados este año y por año, tasa de abandono, nota media, media de días hasta completar, horas estimadas de backlog y reparto por lista y plataforma.
+- Búsqueda de juegos y portadas con SteamGridDB (tu clave personal), selector de portadas alternativas, y opción de pegar una URL o subir una imagen.
 - Filtro por plataforma, orden y buscador sobre todas tus listas.
-- Exportar e importar copia de seguridad (JSON).
+- Exportar e importar copia de seguridad (JSON). Compatible con las copias de la versión anterior.
 
 Los datos se guardan **solo en el navegador del dispositivo**. No hay sincronización todavía: usa Exportar/Importar para pasar datos entre móvil y PC, y haz copias de vez en cuando.
+
+### Sobre HowLongToBeat
+
+HowLongToBeat no ofrece una API oficial: lo que existe son herramientas de terceros que leen su web, y un navegador no puede consultarla directamente. Por eso esta versión incluye el campo manual y el enlace. Una consulta automática sería posible ampliando el proxy de Cloudflare, pero dependería de cómo esté construida su web en cada momento y podría romperse sin avisar.
 
 ## Publicarla en GitHub Pages (gratis)
 
@@ -50,4 +61,4 @@ El worker solo reenvía a `www.steamgriddb.com` y solo acepta peticiones de tu p
 
 ## Pendiente para próximas versiones
 
-Sincronización entre dispositivos, listas personalizadas, importación CSV y estadísticas. La integración con tu cuenta de Backloggd queda descartada: no ofrece API ni exportación oficial.
+Sincronización entre dispositivos, importación CSV y consulta automática de duraciones. La integración con tu cuenta de Backloggd queda descartada: no ofrece API ni exportación oficial.
